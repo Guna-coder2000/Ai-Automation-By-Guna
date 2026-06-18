@@ -1,0 +1,16 @@
+{
+  "applicationUrl": "https://demo.automationtesting.in/Alerts.html",
+  "environment": "qa",
+  "requirement": "Test2Alerts: Click on 'Alert with OK' tab. Click the button to display an alert box. Verify alert appears and accept it. Click on 'Alert with OK & Cancel' tab. Click the button to display a confirm box and accept it. Click on 'Alert with Textbox' tab. Click the button to display a prompt box, enter text 'AI Automation' and accept it.",
+  "testData": {
+    "promptText": "AI Automation"
+  },
+  "locators": {
+    "alertWithOkTab": "//a[@href='#OKTab']",
+    "alertWithOkCancelTab": "//a[@href='#CancelTab']",
+    "alertWithTextboxTab": "//a[@href='#Textbox']",
+    "alertBoxButton": "//*[contains(@class, 'btn-danger')]",
+    "confirmBoxButton": "//*[contains(@class, 'btn-primary')]",
+    "promptBoxButton": "//*[contains(@class, 'btn-info')]"
+  }
+}

@@ -1,0 +1,10 @@
+You are an expert QA Automation Engineer.
+The following Playwright test execution failed, but it does NOT appear to be a simple locator issue (e.g. timeout, syntax error, browser crash, missing URL, network issue).
+
+Analyze the error logs and provide a clear, plain-English root cause analysis explaining exactly why the environment or test failed. Keep it to 2-3 sentences. Do not use markdown.
+
+PLAYWRIGHT ERROR LOGS:
+{{ERROR_LOGS}}
+
+FRAMEWORK LOGS:
+{{FRAMEWORK_LOGS}}

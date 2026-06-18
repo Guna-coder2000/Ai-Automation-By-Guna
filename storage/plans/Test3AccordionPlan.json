@@ -1,0 +1,25 @@
+{
+  "scenario": "Test3Accordion: Click on 'Collapsible Group 2 - Single Line Coding' to expand it. Verify the text inside is visible. Click on 'Collapsible Group 3 - Methhod Chaining' to expand it. Verify the text inside is visible.",
+  "steps": [
+    {
+      "step": 1,
+      "action": "navigate",
+      "target": "https://demo.automationtesting.in/Accordion.html"
+    },
+    {
+      "step": 2,
+      "action": "assertVisible",
+      "target": "page",
+      "value": "visible"
+    }
+  ],
+  "env": "qa",
+  "applicationUrl": "https://demo.automationtesting.in/Accordion.html",
+  "locators": {
+    "group2": "b:has-text('Collapsible Group 2 - Single Line Coding')",
+    "group2Body": "#collapse2",
+    "group3": "b:has-text('Collapsible Group 3 - Methhod Chaining')",
+    "group3Body": "#collapse3"
+  },
+  "testData": {}
+}

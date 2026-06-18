@@ -1,0 +1,65 @@
+You are an Elite Enterprise API Test Automation Architect.
+
+Your task is to convert an API requirement into a robust, high-level Playwright API testing script.
+
+INPUT REQUIREMENT:
+{{REQUEST_JSON}}
+
+OUTPUT RULES:
+- Return ONLY valid TypeScript code block. No explanations or introductory text.
+- DO NOT wrap the code in ```typescript markdown fences. Just return the exact raw code.
+- Use Playwright's `test`, `expect`, and `request`.
+- The code MUST be ready to execute immediately without syntax errors.
+
+ENTERPRISE CODE STRUCTURE & STANDARDS:
+1. **Imports**: Import `test` and `expect` from `@playwright/test`.
+2. **Test Steps**: You MUST wrap every single API call and major assertion block inside a `test.step("description", async () => { ... })` for brilliant HTML reporting.
+3. **Environment Management**: Use `process.env.BASE_URL` if a base URL isn't explicitly provided, falling back to a safe default.
+4. **Headers & Auth**: Ensure robust handling of Headers (e.g., `Accept`, `Content-Type`, `Authorization`).
+5. **Assertions**: Assert MORE than just status codes:
+   - Verify Response Time (e.g., `expect(response.ok()).toBeTruthy()`)
+   - Verify specific JSON body structures and types
+   - Verify Headers (e.g., `expect(response.headers()['content-type']).toContain('application/json')`)
+6. **Error Handling**: Log response bodies safely if a test fails or for context.
+
+EXAMPLE ENTERPRISE SCRIPT:
+
+import { test, expect } from '@playwright/test';
+
+test.describe('Enterprise API Automation Suite', () => {
+  const baseUrl = process.env.BASE_URL || 'https://reqres.in/api';
+  let createdUserId: string;
+
+  test('E2E API Workflow: Create, Verify, and Delete User', async ({ request }) => {
+    
+    await test.step('1. Create a new user via POST request', async () => {
+      const response = await request.post(`${baseUrl}/users`, {
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        data: { name: 'morpheus', job: 'leader' }
+      });
+      
+      expect(response.ok(), `Expected successful request, got ${response.status()}`).toBeTruthy();
+      expect(response.status()).toBe(201);
+      
+      const body = await response.json();
+      expect(body).toHaveProperty('id');
+      expect(body.name).toBe('morpheus');
+      createdUserId = body.id;
+    });
+
+    await test.step('2. Verify the created user details via GET request', async () => {
+      const response = await request.get(`${baseUrl}/users/${createdUserId}`);
+      
+      // Note: For mocked APIs, 404 might happen on rapid fetch, assert gracefully
+      expect([200, 404]).toContain(response.status()); 
+      
+      if(response.status() === 200) {
+        const body = await response.json();
+        expect(body.data).toBeDefined();
+        expect(response.headers()['content-type']).toContain('application/json');
+      }
+    });
+
+  });
+});
+

@@ -1,0 +1,27 @@
+
+# Dependencies
+node_modules/
+
+# Environment Variables
+.env
+*.env
+
+# Playwright & Automation Reports
+test-results/
+playwright-report/
+playwright/.cache/
+allure-results/
+allure-report/
+reports/
+logs/
+
+# Build & Generated Files
+dist/
+build/
+tsconfig.generated.json
+
+# System & IDE
+.DS_Store
+.vscode/
+.idea/
+.gemini/

@@ -1,0 +1,41 @@
+{
+  "applicationUrl": "https://demo.automationtesting.in/Register.html",
+  "environment": "qa",
+  "requirement": "Test6E2E: 1. On the Register page, fill in the First Name, Last Name, Email address, and Phone number. Select Male for Gender. Click Submit. 2. Navigate to https://demo.automationtesting.in/Alerts.html and click the button to display an alert box and automatically accept the browser alert. 3. Navigate to https://demo.automationtesting.in/Accordion.html and click on 'Collapsible Group 2 - Single Line Coding' to expand the accordion and verify it opens. 4. Navigate to https://demo.automationtesting.in/Selectable.html and click on 'Serialize' tab. Then click on 'Sakinalium - Readability' from the list of selectable items. 5. Navigate to https://demo.automationtesting.in/Youtube.html and locate the Youtube video iframe. Switch into the iframe context and click the Play button on the youtube video.",
+  "testData": {
+    "firstName": "AI",
+    "lastName": "Agent",
+    "email": "ai.agent@example.com",
+    "phone": "9876543210"
+  },
+  "locators": {
+    "firstName": "//input[@placeholder='First Name']",
+    "lastName": "//input[@placeholder='Last Name']",
+    "email": "//input[@type='email']",
+    "phone": "//input[@type='tel']",
+    "genderMale": "//input[@value='']",
+    "submit": "//*[@id='submitbtn']",
+    "alertBoxButton": "//*[contains(@class, 'btn-danger')]",
+    "group2": "//*[contains(text(), 'Collapsible Group 2 - Single Line Coding')]",
+    "serializeTab": "//a[@href='#Serialize']",
+    "readabilityItem": "//*[contains(text(), 'Sakinalium - Readability')]",
+    "playButton": "//*[@aria-label='Play']"
+  },
+  "steps": [
+    { "step": 1, "action": "navigate", "target": "https://demo.automationtesting.in/Register.html" },
+    { "step": 2, "action": "fill", "target": "firstName", "value": "AI" },
+    { "step": 3, "action": "fill", "target": "lastName", "value": "Agent" },
+    { "step": 4, "action": "fill", "target": "email", "value": "ai.agent@example.com" },
+    { "step": 5, "action": "fill", "target": "phone", "value": "9876543210" },
+    { "step": 6, "action": "click", "target": "genderMale" },
+    { "step": 7, "action": "click", "target": "submit" },
+    { "step": 8, "action": "navigate", "target": "https://demo.automationtesting.in/Alerts.html" },
+    { "step": 9, "action": "click", "target": "alertBoxButton" },
+    { "step": 10, "action": "navigate", "target": "https://demo.automationtesting.in/Accordion.html" },
+    { "step": 11, "action": "click", "target": "group2" },
+    { "step": 12, "action": "navigate", "target": "https://demo.automationtesting.in/Selectable.html" },
+    { "step": 13, "action": "click", "target": "serializeTab" },
+    { "step": 14, "action": "click", "target": "readabilityItem" },
+    { "step": 15, "action": "navigate", "target": "https://demo.automationtesting.in/Youtube.html" }
+  ]
+}

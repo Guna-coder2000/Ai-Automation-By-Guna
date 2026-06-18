@@ -1,0 +1,1 @@
+{"requirement":"Test the public API https://jsonplaceholder.typicode.com/posts/1. Verify the status code is 200, and the response JSON contains a userId and title.","isApiTest":true}
