@@ -44,14 +44,14 @@ async function resolveFile(arg: string, fallbackDir = 'requests'): Promise<strin
 
   const targetPath = await resolvePath(arg);
   const info = await stat(targetPath).catch(() => null);
-  
+
   if (info?.isDirectory()) {
     const files = await readdir(targetPath);
     return files
       .filter(f => f.endsWith('.json'))
       .map(f => path.join(targetPath, f));
   }
-  
+
   return [targetPath];
 }
 
@@ -130,7 +130,7 @@ async function runExecutionWithHealing(specPath: string): Promise<void> {
           `Test failed; locator not detected: ${healingReason}`
         );
         logger.warn(`Execution failed with error: ${healingReason}`);
-        
+
         if (output && healingAttempts < maxHealingAttempts) {
           const analyzer = new AnalysisAgent();
           const rca = await analyzer.run(output);
@@ -138,13 +138,13 @@ async function runExecutionWithHealing(specPath: string): Promise<void> {
           executionLog('error', 'AI Root Cause Analysis', rca);
 
           const isLogicIssue = /logic|missing step|timeout|navigation|expected .* visible|flow|login/i.test(rca) || /logic/i.test(healingReason);
-          
+
           if (isLogicIssue) {
             executionLog('heal', 'Generative Logic Healing', 'Logic issue detected. Triggering PlanningAgent to replan the UI flow.');
             const planner = new PlanningAgent();
             const scenarioName = path.basename(specPath, '.spec.ts');
             const planPath = path.resolve('storage', 'plans', `${scenarioName}Plan.json`);
-            
+
             const newPlanPath = await planner.replan(output, domSnippet, planPath);
             if (newPlanPath) {
               const generator = new GenerateAgent();
@@ -165,7 +165,7 @@ async function runExecutionWithHealing(specPath: string): Promise<void> {
           logger.info(`FINAL ROOT CAUSE: ${rca}`);
           executionLog('error', 'Final Root Cause Analysis', rca);
         }
-        
+
         break;
       }
 
@@ -198,13 +198,13 @@ async function runFullPipeline(requestFiles: string[]): Promise<void> {
   Config.get();
 
   let executionError: unknown;
-  
+
   try {
     // 1. Parallel Generation Phase (Fast Sharding)
     const generatedSpecs = await Promise.all(requestFiles.map(async (requestFile) => {
       const rawReq = await readFile(requestFile, 'utf-8').catch(() => '{}');
       const isApi = /"isApiTest"\s*:\s*true/.test(rawReq);
-      
+
       if (isApi) {
         return await runApiGeneration(requestFile);
       } else {
@@ -214,8 +214,8 @@ async function runFullPipeline(requestFiles: string[]): Promise<void> {
     }));
 
     // 2. Sequential Execution Phase
-    await emptyDir('blob-report').catch(() => {});
-    
+    await emptyDir('blob-report').catch(() => { });
+
     for (const specPath of generatedSpecs) {
       try {
         await runExecutionWithHealing(specPath);

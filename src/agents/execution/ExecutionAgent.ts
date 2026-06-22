@@ -35,7 +35,9 @@ export class ExecutionAgent {
         modeFlag = ' --headed';
       }
 
-      const cmd = `npx playwright test "${relativePath}" --project=${project}${modeFlag}`;
+      // We strictly enforce --workers=1 here because concurrency is now managed at the Node Orchestrator level
+      // in cli.ts. If we allowed Playwright to spawn its own workers, we would multiply the browser instances exponentially.
+      const cmd = `npx playwright test "${relativePath}" --project=${project}${modeFlag} --workers=1`;
       executionLog('action', 'Opening browser', `Project: ${project}${modeFlag ? `, mode:${modeFlag.trim()}` : ''}`);
 
       let stdout = '';
