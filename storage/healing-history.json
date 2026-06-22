@@ -1,8 +1,0 @@
-[
-  {
-    "timestamp": "2026-06-22T19:36:18.519Z",
-    "file": "InternetUIComponentsLocators.ts",
-    "oldSelector": "//button[contains(normalize-space(.), \"javascriptAlerts\")] | //a[contains(normalize-space(.), \"javascriptAlerts\")] | //*[contains(@class, \"btn\") and contains(normalize-space(.), \"javascriptAlerts\")] | //*[@id=\"javascriptAlertsLink\" or @data-testid=\"javascriptAlertsLink\"]",
-    "newSelector": "*"
-  }
-]
