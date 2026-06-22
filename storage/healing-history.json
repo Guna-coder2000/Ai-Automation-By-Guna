@@ -1,32 +1,8 @@
 [
   {
-    "timestamp": "2026-06-18T03:14:15.951Z",
-    "file": "Test6E2ELocators.ts",
-    "oldSelector": "//input[@value='']",
-    "newSelector": "input[name=\"password\"], input[type=\"password\"]"
-  },
-  {
-    "timestamp": "2026-06-18T03:14:20.983Z",
-    "file": "Test6E2ELocators.ts",
-    "oldSelector": "input[name=\"password\"], input[type=\"password\"]",
-    "newSelector": "(//input[@type='password'])[1]"
-  },
-  {
-    "timestamp": "2026-06-18T03:31:08.874Z",
-    "file": "Test6E2ELocators.ts",
-    "oldSelector": "input[name=\"password\"], input[type=\"password\"]",
-    "newSelector": "(//input[@type='password'])[1]"
-  },
-  {
-    "timestamp": "2026-06-18T03:31:14.378Z",
-    "file": "Test6E2ELocators.ts",
-    "oldSelector": "//*[contains(text(), 'Sakinalium - Readability')]",
-    "newSelector": "text=\"Sakinalium - Readability\""
-  },
-  {
-    "timestamp": "2026-06-18T03:31:24.155Z",
-    "file": "Test6E2ELocators.ts",
-    "oldSelector": "text=\"Sakinalium - Readability",
-    "newSelector": "a:has-text(\"Sakinalium - Readability\")"
+    "timestamp": "2026-06-22T19:36:18.519Z",
+    "file": "InternetUIComponentsLocators.ts",
+    "oldSelector": "//button[contains(normalize-space(.), \"javascriptAlerts\")] | //a[contains(normalize-space(.), \"javascriptAlerts\")] | //*[contains(@class, \"btn\") and contains(normalize-space(.), \"javascriptAlerts\")] | //*[@id=\"javascriptAlertsLink\" or @data-testid=\"javascriptAlertsLink\"]",
+    "newSelector": "*"
   }
 ]

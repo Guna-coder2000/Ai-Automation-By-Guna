@@ -32,7 +32,7 @@ import {
   executionLog,
 } from './utils/console-ui';
 
-import { readdir, stat } from 'fs-extra';
+import { readdir, stat, emptyDir } from 'fs-extra';
 
 async function resolveFile(arg: string, fallbackDir = 'requests'): Promise<string[]> {
   const resolvePath = async (p: string) => {
@@ -213,9 +213,16 @@ async function runFullPipeline(requestFiles: string[]): Promise<void> {
       }
     }));
 
-    // 2. Parallel Execution Phase
+    // 2. Sequential Execution Phase
+    await emptyDir('blob-report').catch(() => {});
+    
     for (const specPath of generatedSpecs) {
-      await runExecutionWithHealing(specPath);
+      try {
+        await runExecutionWithHealing(specPath);
+      } catch (err) {
+        Logger.getInstance().error(`Execution failed for ${specPath}`, { error: err });
+        executionError = err;
+      }
     }
   } catch (err) {
     executionError = err;

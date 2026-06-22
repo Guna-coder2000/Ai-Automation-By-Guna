@@ -59,14 +59,15 @@ export class ApiAgent {
   }
 
   private generateStructuredFallback(req: any, scenarioName: string): string {
-    const url = req.applicationUrl || 'https://jsonplaceholder.typicode.com/posts/1';
+    const url = req.applicationUrl || 'https://api.example.com';
     return `import { test, expect } from '@playwright/test';
 import { CommonApiActions } from '../../src/framework/CommonApiActions';
 
-test.describe('${req.requirement || 'API Test'}', () => {
-  test('Execute API flow', async ({ request }) => {
+test.describe('${req.requirement || 'API Automation Test'}', () => {
+  test('Execute dynamic API flow', async ({ request }) => {
     const api = new CommonApiActions(request);
-    await test.step('Send GET request and verify', async () => {
+    
+    await test.step('Send dynamic API request and verify response', async () => {
        const response = await api.get('${url}');
        expect(response).toBeDefined();
     });
@@ -81,7 +82,6 @@ test.describe('${req.requirement || 'API Test'}', () => {
     } catch {
       const fileName = path.basename(requestFile, path.extname(requestFile));
       return {
-        applicationUrl: process.env.BASE_URL,
         requirement: raw.trim() || fileName.replace(/[-_]+/g, ' '),
         isApiTest: true
       };

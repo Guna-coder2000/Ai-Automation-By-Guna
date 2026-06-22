@@ -238,11 +238,9 @@ Prefer direct element identification using:
 * role-related attributes
 * visible text
 
-Avoid XPath axes and relationship-based expressions such as:
+Use structural and relationship-based XPath expressions when elements lack stable IDs or names. Modern Enterprise applications often use dynamic IDs, so the only stable way to find an element is by its relationship to a stable label or container.
 
-following::
-
-preceding::
+PREFER XPath axes and relationship-based expressions such as:
 
 following-sibling::
 
@@ -252,21 +250,15 @@ ancestor::
 
 descendant::
 
-parent::
+Examples:
 
-self::
+//label[normalize-space()='Username']/following-sibling::input
 
-Avoid examples like:
+//div[contains(text(), 'Status')]/following-sibling::div//span
 
-//label[contains(normalize-space(),'Username')]/following::input[1]
+//button[normalize-space()='Submit']/ancestor::form//input[@type='checkbox']
 
-//label[contains(normalize-space(),'Username')]/preceding::input[1]
-
-//button[normalize-space()='Submit']/ancestor::form
-
-//input[@name='email']/following-sibling::span
-
-Avoid:
+Avoid absolute indexed paths:
 
 /html/body/div/div/div
 
@@ -430,23 +422,7 @@ Prefer:
 
 Use direct attribute-based XPath selectors whenever possible.
 
-Avoid XPath axes:
-
-following::
-
-preceding::
-
-following-sibling::
-
-preceding-sibling::
-
-ancestor::
-
-descendant::
-
-parent::
-
-self::
+Use robust, structural attribute-based XPath selectors or relationship axes (e.g. `following-sibling::`, `ancestor::`) whenever possible. Modern enterprise apps have dynamic DOMs, so finding elements relative to stable labels is highly encouraged.
 
 Avoid:
 
@@ -523,6 +499,8 @@ data-test = 95
 aria-label = 90
 
 name = 85
+
+relative structural xpath (following-sibling, ancestor) = 85
 
 stable id = 80
 

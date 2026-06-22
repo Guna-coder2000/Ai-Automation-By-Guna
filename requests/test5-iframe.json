@@ -1,7 +1,0 @@
-{
-  "applicationUrl": "https://demo.automationtesting.in/Youtube.html",
-  "environment": "qa",
-  "requirement": "Test5Iframe: Locate the Youtube video iframe. Switch into the iframe context and click the Play button on the youtube video.",
-  "testData": {},
-  "locators": {}
-}

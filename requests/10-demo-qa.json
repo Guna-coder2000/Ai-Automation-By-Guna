@@ -1,0 +1,24 @@
+{
+  "scenario": "DemoQA Dynamic Component Testing",
+  "applicationUrl": "https://demoqa.com/webtables",
+  "steps": [
+    { "action": "navigate", "target": "https://demoqa.com/webtables" },
+    { "action": "click", "target": "addNewRecordButton" },
+    { "action": "fill", "target": "firstName", "value": "Alice" },
+    { "action": "fill", "target": "lastName", "value": "Smith" },
+    { "action": "fill", "target": "userEmail", "value": "alice@example.com" },
+    { "action": "fill", "target": "age", "value": "30" },
+    { "action": "fill", "target": "salary", "value": "50000" },
+    { "action": "fill", "target": "department", "value": "IT" },
+    { "action": "click", "target": "submit" },
+    { "action": "assertVisible", "target": "newRecordRow" }
+  ],
+  "testData": {
+    "firstName": "Alice",
+    "lastName": "Smith",
+    "userEmail": "alice@example.com",
+    "age": "30",
+    "salary": "50000",
+    "department": "IT"
+  }
+}

@@ -546,12 +546,61 @@ export class CommonActions {
       await fs.ensureDir(path.resolve('test-results'));
       await fs.writeFile(path.resolve('test-results/failed-selector.txt'), selector, 'utf-8');
       let domHtml = await this.page.content();
+      
+      // 1. Accessibility Tree
+      try {
+        const a11ySnapshot = await (this.page as any).accessibility.snapshot();
+        domHtml += '\n\n<!-- ACCESSIBILITY TREE -->\n' + JSON.stringify(a11ySnapshot, null, 2);
+      } catch (e) {
+        this.logger.warn(`Failed to capture accessibility snapshot: ${e}`);
+      }
+
+      // 2. Frame Tree
+      try {
+        const frames = this.page.frames().map(f => ({
+          name: f.name(),
+          url: f.url(),
+          parent: f.parentFrame()?.name() || null
+        }));
+        domHtml += '\n\n<!-- FRAME TREE -->\n' + JSON.stringify(frames, null, 2);
+      } catch (e) {
+        this.logger.warn(`Failed to capture frame tree: ${e}`);
+      }
+
+      // 3. Shadow DOM Tree
+      try {
+        const shadowDomTree = await this.page.evaluate(() => {
+          function getShadowRoots(root: any): any[] {
+            let result: any[] = [];
+            // @ts-ignore: executed in browser context
+            const win = window as any;
+            if (!win.document) return result;
+            const walker = win.document.createTreeWalker(root, win.NodeFilter.SHOW_ELEMENT, null, false);
+            while (walker.nextNode()) {
+              const el = walker.currentNode as any;
+              if (el.shadowRoot) {
+                result.push({ tag: el.tagName, html: el.shadowRoot.innerHTML });
+                result = result.concat(getShadowRoots(el.shadowRoot));
+              }
+            }
+            return result;
+          }
+          // @ts-ignore: executed in browser context
+          return getShadowRoots((window as any).document.body);
+        });
+        domHtml += '\n\n<!-- SHADOW DOM TREE -->\n' + JSON.stringify(shadowDomTree, null, 2);
+      } catch (e) {
+        this.logger.warn(`Failed to capture shadow DOM tree: ${e}`);
+      }
+
+      // 4. Specific Iframe Content (if applicable)
       if (this.currentFrameLocator) {
          try {
            const frameHtml = await this.currentFrameLocator.locator(':root').innerHTML();
-           domHtml += '\n<!-- IFRAME CONTENT -->\n' + frameHtml;
+           domHtml += '\n\n<!-- IFRAME CONTENT -->\n' + frameHtml;
          } catch {}
       }
+      
       await fs.writeFile(path.resolve('test-results/error-context.md'), domHtml);
     } catch {}
 

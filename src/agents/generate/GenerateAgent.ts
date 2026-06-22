@@ -57,6 +57,17 @@ export class GenerateAgent {
       supportFiles = this.pruneSupportFilesToImportGraph(supportFiles, promptSpec);
 
       const fallbackBundle = this.generateStructuredFallback(plan);
+
+      // Force robust heuristic locators to override LLM hallucinations, unless explicitly provided
+      if (!plan.locators || Object.keys(plan.locators).length === 0 || (Object.keys(plan.locators).length === 1 && plan.locators.applicationUrl)) {
+        for (const fileName of Object.keys(supportFiles)) {
+          if (/locator/i.test(fileName) && fallbackBundle.supportFiles[fileName]) {
+            supportFiles[fileName] = fallbackBundle.supportFiles[fileName];
+          }
+        }
+        this.logger.info(`GenerateAgent: overriding LLM locators with local dynamic heuristics for maximum reliability.`);
+      }
+
       const acceptedPromptSpec = Boolean(
         promptSpec
         && this.hasPageAndLocatorSupport(supportFiles)
@@ -120,12 +131,8 @@ export class GenerateAgent {
       normalized.applicationUrl = this.inferApplicationUrlFromSteps(normalized.steps) ?? process.env.BASE_URL;
     }
 
-    normalized.steps = this.expandDataDrivenCartSteps(
-      Array.isArray(normalized.steps) ? normalized.steps : [],
-      normalized.locators,
-      normalized.testData,
-      normalized.scenario
-    );
+    // Removed expandDataDrivenCartSteps call
+    normalized.steps = Array.isArray(normalized.steps) ? normalized.steps : [];
 
     return normalized;
   }
@@ -187,6 +194,8 @@ ${methods}
     const valueParameter = this.stepUsesValueParameter(action) ? ', value: string' : '';
 
     switch (action) {
+      case 'executeprerequisite':
+        return `  // Prerequisite execution for ${step.target} is handled at the spec level or test setup.`;
       case 'navigate':
         const navUrl = (step.target && String(step.target).startsWith('http')) 
             ? String(step.target) 
@@ -211,6 +220,18 @@ ${methods}
         if (!targetKey) return '';
         return `  async ${methodName}(): Promise<void> {
     await this.actions.verifyHidden(${keyExpression}, 10000);
+  }`;
+      case 'verifytext':
+      case 'asserttext':
+        if (!targetKey) return '';
+        return `  async ${methodName}(${valueParameter.slice(2)}): Promise<void> {
+    await this.actions.verifyText(${keyExpression}, value, 10000);
+  }`;
+      case 'verifyvalue':
+      case 'assertvalue':
+        if (!targetKey) return '';
+        return `  async ${methodName}(${valueParameter.slice(2)}): Promise<void> {
+    await this.actions.verifyValue(${keyExpression}, value, 10000);
   }`;
       case 'switchtoframe':
         if (!targetKey) return '';
@@ -319,7 +340,7 @@ ${methods}
 
     return `import { test, expect } from '@playwright/test';
 import { ${pageClass} } from '../pages/${pageClass}';
-import { ${locatorExport} } from '../locators/${locatorExport}';
+import { ${locatorExport}${plan.testData ? ', TestData' : ''} } from '../locators/${locatorExport}';
 
 test(${JSON.stringify(scenario)}, async ({ page }) => {
   test.setTimeout(60000);
@@ -345,11 +366,20 @@ ${body || `  await expect(page.locator('body')).toBeVisible({ timeout: 10000 });
     const targetKey = this.resolveLocatorKey(String(step?.target ?? ''), locators);
     const value = this.resolveStepValue(step, testData);
     const title = this.fallbackStepTitle(step, index);
-    const valueLiteral = JSON.stringify(String(value ?? ''));
+    
+    let argCode = '';
+    if (this.stepUsesValueParameter(action)) {
+      const dataKey = this.resolveTestDataKey(step, testData);
+      argCode = dataKey ? `TestData.${dataKey}` : JSON.stringify(String(value ?? ''));
+    }
+    
     const callName = methodName || this.methodNameForStep(step, index);
     let code = '';
 
     switch (action) {
+      case 'executeprerequisite':
+        code = `  // Execute prerequisite test logic here if needed: ${step.target}`;
+        break;
       case 'navigate':
         const navTarget = String(step?.target ?? '');
         const expectUrl = navTarget.startsWith('http') ? JSON.stringify(navTarget) : `${locatorExport}.applicationUrl`;
@@ -383,11 +413,11 @@ ${body || `  await expect(page.locator('body')).toBeVisible({ timeout: 10000 });
       case 'asserttext':
       case 'assertvalue':
         if (!targetKey) return '';
-        code = `await ${pageVar}.${callName}(${valueLiteral});`;
+        code = `await ${pageVar}.${callName}(${argCode});`;
         break;
       case 'press':
         if (!targetKey) return '';
-        code = `await ${pageVar}.${callName}(${JSON.stringify(String(value || 'Enter'))});`;
+        code = `await ${pageVar}.${callName}(${argCode || JSON.stringify('Enter')});`;
         break;
       case 'draganddrop':
       case 'dragdrop':
@@ -426,80 +456,61 @@ ${body || `  await expect(page.locator('body')).toBeVisible({ timeout: 10000 });
   private methodNameForStep(step: any, index: number): string {
     const action = String(step?.action || 'step').toLowerCase();
     const target = String(step?.target || '');
-    const value = String(step?.value || '');
     const targetName = this.toPascalName(target) || `Step${index + 1}`;
-    const valueName = this.toPascalName(value);
     const friendlyTargetName = this.friendlyTargetName(target) || `Step${index + 1}`;
-    const normalizedTarget = this.normalizeKey(target);
 
+    let methodName = '';
     switch (action) {
       case 'navigate':
-        return 'navigateToApplication';
+        methodName = 'navigateToApp';
+        break;
+      case 'executeprerequisite':
+        methodName = `execute${targetName}`;
+        break;
       case 'fill':
       case 'clearandentertext':
-        if (/search.*user.*name|user.*name.*search/i.test(target)) return 'enterSearchUsernameOnInput';
-        if (/new.*user.*name|user.*name.*new/i.test(target)) return 'enterNewUsernameOnInput';
-        if (/confirm.*password|password.*confirm/i.test(target)) return 'confirmPasswordOnInput';
-        if (/new.*password|password.*new/i.test(target)) return 'enterNewPasswordOnInput';
-        if (/user.?name|email/i.test(target)) return 'enterUsernameOnInput';
-        if (/password/i.test(target)) return 'enterPasswordOnInput';
-        return `enterTextOn${friendlyTargetName}Input`;
+        methodName = `enterTextOn${friendlyTargetName}`;
+        break;
       case 'click':
       case 'clickonelement':
-        if (this.isAddToCartStep(step)) return `add${this.toPascalName(value || target)}ToCartElement`;
-        if (normalizedTarget === 'carticon') return 'openCartElement';
-        if (normalizedTarget === 'loginbutton') return 'submitLoginElement';
-        if (/admin|module|menu|nav|tab|link/i.test(target)) return `open${friendlyTargetName}Element`;
-        if (/add|create|new/i.test(target)) return `open${friendlyTargetName}FormElement`;
-        if (/save/i.test(target)) return 'saveUserElement';
-        if (/submit/i.test(target)) return 'submitFormElement';
-        if (/search/i.test(target)) return 'searchUserElement';
-        return `clickOn${friendlyTargetName}Element`;
+        methodName = `click${friendlyTargetName}`;
+        break;
       case 'select':
-        return `selectOptionFrom${friendlyTargetName}Dropdown`;
       case 'selectbytext':
-      case 'selectoptionbytextondropdown':
       case 'choose':
-        return `selectOptionByTextFrom${friendlyTargetName}Dropdown`;
-      case 'fillandchoose':
-      case 'autocomplete':
-        if (/employee/i.test(target)) return 'clearAndEnterTextAndChooseEmployeeOnDropdown';
-        return `clearAndEnterTextAndChoose${friendlyTargetName}OnDropdown`;
+        methodName = `select${friendlyTargetName}`;
+        break;
       case 'check':
-        return `checkOn${targetName}Checkbox`;
+        methodName = `check${targetName}`;
+        break;
       case 'uncheck':
-        return `uncheckOn${targetName}Checkbox`;
+        methodName = `uncheck${targetName}`;
+        break;
       case 'press':
-        return `pressKeyOn${targetName}Element`;
+        methodName = `pressKeyOn${targetName}`;
+        break;
       case 'hover':
-        return `hoverOver${targetName}ElementToFocus`;
-      case 'uploadfile':
-      case 'upload':
-        return `uploadFileOn${targetName}Input`;
-      case 'draganddrop':
-      case 'dragdrop':
-      case 'drag':
-        return `drag${targetName}To${this.toPascalName(this.secondaryTargetName(step)) || 'Target'}`;
-      case 'verifyenabled':
-      case 'assertenabled':
-        return `verify${targetName}Enabled`;
+        methodName = `hover${targetName}`;
+        break;
       case 'verifyvisible':
       case 'assertvisible':
-        if (/products?|dashboard/i.test(target)) return 'verifyProductsPageVisible';
-        return `verify${valueName || targetName}Visible`;
+        methodName = `verify${targetName}Visible`;
+        break;
       case 'asserthidden':
-        return `verify${targetName}Hidden`;
+        methodName = `verify${targetName}Hidden`;
+        break;
       case 'asserttext':
-        if (/cartitem|inventoryitem/i.test(target) && valueName) return `verify${valueName}InCart`;
-        if (/table|row|result|search/i.test(target)) return 'verifyUserInResults';
-        return `verify${valueName || friendlyTargetName}Text`;
-      case 'assertvalue':
-        return `verify${targetName}Value`;
-      case 'logout':
-        return `logoutFrom${targetName}`;
+        methodName = `verify${targetName}Text`;
+        break;
       default:
-        return `verify${targetName}`;
+        methodName = `${action}${targetName}`;
     }
+
+    // Truncate to keep code clean and under 20 chars where possible (roughly)
+    if (methodName.length > 25) {
+      methodName = methodName.substring(0, 25);
+    }
+    return methodName;
   }
 
   private toPascalName(value: string): string {
@@ -538,81 +549,7 @@ ${body || `  await expect(page.locator('body')).toBeVisible({ timeout: 10000 });
     return this.resolveLocatorKey(this.secondaryTargetName(step), locators);
   }
 
-  private expandDataDrivenCartSteps(
-    steps: any[],
-    locators: Record<string, string>,
-    testData?: Record<string, any>,
-    scenario = ''
-  ): any[] {
-    const itemNames = this.normalizeItems(testData?.items);
-    const cartScenario = /cart|add .*item|items? to cart|shopping/i.test(String(scenario));
-
-    if (!itemNames.length) {
-      return this.reindexSteps(steps.filter((step) => !this.isDataOnlyItemsStep(step, testData)));
-    }
-
-    const hasCartFlow = steps.some((step) => {
-      const target = this.normalizeKey(String(step?.target ?? ''));
-      const action = String(step?.action ?? '').toLowerCase();
-      return (action === 'click' && this.normalizeItems(testData?.items).some((item) => this.stepMatchesLabel(step, item)))
-        || (action === 'asserttext' && /(cart|item|product|name|result)/.test(target));
-    });
-
-    if (hasCartFlow) {
-      return this.reindexSteps(steps.filter((step) => !this.isDataOnlyItemsStep(step, testData)));
-    }
-
-    let insertedCartFlow = false;
-    const expanded: any[] = [];
-
-    for (const step of steps) {
-      if (this.isDataOnlyItemsStep(step, testData)) {
-        expanded.push(...this.buildCartFlowSteps(itemNames, locators));
-        insertedCartFlow = true;
-      } else {
-        expanded.push(step);
-      }
-    }
-
-    if (!insertedCartFlow && cartScenario) {
-      expanded.push(...this.buildCartFlowSteps(itemNames, locators));
-    }
-
-    return this.reindexSteps(expanded);
-  }
-
-  private buildCartFlowSteps(itemNames: string[], locators: Record<string, string>): any[] {
-    const steps: any[] = [
-      {
-        action: 'assertVisible',
-        target: this.pickLocatorTarget(locators, ['productsTitle', 'productTitle', 'dashboard'], 'productsTitle'),
-        value: 'Products',
-      },
-    ];
-
-    for (const itemName of itemNames) {
-      steps.push({
-        action: 'click',
-        target: this.pickCartItemTarget(locators, itemName),
-        value: itemName,
-      });
-    }
-
-    steps.push({
-      action: 'click',
-      target: this.pickLocatorTarget(locators, ['cartIcon', 'shoppingCartLink', 'cartLink'], 'cartIcon'),
-    });
-
-    for (const itemName of itemNames) {
-      steps.push({
-        action: 'assertText',
-        target: this.pickLocatorTarget(locators, ['cartItemName', 'cartItems', 'inventoryItemName'], 'cartItemName'),
-        value: itemName,
-      });
-    }
-
-    return steps;
-  }
+  // Removed expandDataDrivenCartSteps and buildCartFlowSteps to strictly enforce domain agnosticism
 
   private pickCartItemTarget(locators: Record<string, string>, itemName: string): string {
     return this.findBestLocatorForWords(locators, itemName, /add|cart|button|btn|link|select|choose/i) ?? itemName;
@@ -741,17 +678,7 @@ ${body || `  await expect(page.locator('body')).toBeVisible({ timeout: 10000 });
         .filter(([, value]) => value.length > 0)
     );
 
-    const addAlias = (alias: string, candidates: string[], pattern?: RegExp) => {
-      if (locators[alias]) return;
-      const candidate = this.findLocatorValue(locators, candidates, pattern);
-      if (candidate) locators[alias] = candidate;
-    };
-
-    addAlias('username', ['username', 'usernameInput', 'userNameInput', 'emailInput'], /user.?name|email/i);
-    addAlias('password', ['password', 'passwordInput'], /password/i);
-    addAlias('loginButton', ['loginButton', 'submitButton', 'signInButton'], /(login|submit|sign.?in).*button|button.*(login|submit|sign.?in)/i);
-    addAlias('dashboard', ['dashboard', 'productsTitle', 'productTitle', 'expectedElement'], /(dashboard|product.*title|expected)/i);
-
+    // Removed specific alias injection (username, password, login) to be fully dynamic
     return locators;
   }
 
@@ -795,50 +722,24 @@ ${body || `  await expect(page.locator('body')).toBeVisible({ timeout: 10000 });
       .find((key) => this.normalizeKey(key) === normalizedTarget);
     if (exactKey) return exactKey;
 
-    const aliases: Record<string, string[]> = {
-      username: ['usernameInput', 'username', 'userNameInput', 'emailInput'],
-      password: ['passwordInput', 'password'],
-      loginbutton: ['loginButton', 'submitButton', 'signInButton'],
-      products: ['productsTitle', 'productTitle', 'dashboard'],
-      productstitle: ['productsTitle', 'productTitle', 'dashboard'],
-      dashboard: ['dashboard', 'productsTitle', 'expectedElement'],
-      submitbutton: ['submitButton', 'saveButton', 'loginButton'],
-      searchbutton: ['searchButton', 'submitButton'],
-      searchresults: ['searchResults', 'resultsTable', 'expectedElement'],
-    };
-
-    for (const candidate of aliases[normalizedTarget] ?? []) {
-      const match = Object.keys(locators).find((key) => this.normalizeKey(key) === this.normalizeKey(candidate));
-      if (match && match !== 'applicationUrl') return match;
-    }
-
     return Object.entries(locators)
       .find(([key, selector]) => key !== 'applicationUrl' && selector === target)?.[0];
   }
 
   private selectorForTarget(target: string, action: string): string | undefined {
     const trimmed = target.trim();
-    const normalized = this.normalizeKey(trimmed);
 
     if (this.looksLikeSelector(trimmed)) return trimmed;
 
-    const selectors: Record<string, string> = {
-      username: '[name="username"], #user-name, input[placeholder="Username"]',
-      usernameinput: '[name="username"], #user-name, input[placeholder="Username"]',
-      password: '[name="password"], #password, input[placeholder="Password"]',
-      passwordinput: '[name="password"], #password, input[placeholder="Password"]',
-      loginbutton: 'button[type="submit"], input[type="submit"], #login-button',
-      submitbutton: 'button[type="submit"], input[type="submit"]',
-      products: '.title',
-      productstitle: '.title',
-      dashboard: '.title, .oxd-topbar-header-title, h1',
-      page: 'body',
-    };
-
-    if (selectors[normalized]) return selectors[normalized];
-    if (['fill', 'select', 'selectbytext', 'choose', 'fillandchoose', 'autocomplete', 'press', 'uploadfile', 'upload'].includes(action)) return `[name="${trimmed}"], input[placeholder="${trimmed}"]`;
-    if (['click', 'logout'].includes(action)) return `button:has-text("${trimmed.replace(/button$/i, '').trim() || trimmed}")`;
-    return undefined;
+    if (['fill', 'select', 'selectbytext', 'choose', 'fillandchoose', 'autocomplete', 'press', 'uploadfile', 'upload'].includes(action)) {
+      return `//*[@name="${trimmed}" or @id="${trimmed}" or @placeholder="${trimmed}" or @data-testid="${trimmed}" or @aria-label="${trimmed}"]`;
+    }
+    if (['click', 'logout'].includes(action)) {
+      const clean = trimmed.replace(/button|btn|link$/i, '').trim() || trimmed;
+      return `//button[contains(normalize-space(.), "${clean}")] | //a[contains(normalize-space(.), "${clean}")] | //*[contains(@class, "btn") and contains(normalize-space(.), "${clean}")] | //*[@id="${trimmed}" or @data-testid="${trimmed}"]`;
+    }
+    if (['verifytext', 'asserttext'].includes(action)) return `//*[contains(normalize-space(.), "${trimmed}")]`;
+    return `//*[@name="${trimmed}" or @id="${trimmed}" or @data-testid="${trimmed}"]`;
   }
 
   private looksLikeSelector(value: string): boolean {
@@ -863,6 +764,27 @@ ${body || `  await expect(page.locator('body')).toBeVisible({ timeout: 10000 });
     }
 
     return step?.value;
+  }
+
+  private resolveTestDataKey(step: any, testData?: Record<string, any>): string | undefined {
+    if (!testData) return undefined;
+    
+    const targetKey = this.normalizeKey(String(step?.target ?? ''));
+    
+    // Exact value match
+    if (step?.value !== undefined && step.value !== null && step.value !== '') {
+      const exact = Object.entries(testData).find(([, val]) => val === step.value);
+      if (exact) return exact[0];
+    }
+    
+    // Key match
+    const keyMatch = Object.keys(testData).find(key => this.normalizeKey(key) === targetKey);
+    if (keyMatch) return keyMatch;
+    
+    if (/username|email/i.test(targetKey) && testData.username !== undefined) return 'username';
+    if (/password/i.test(targetKey) && testData.password !== undefined) return 'password';
+    
+    return undefined;
   }
 
   private fallbackStepTitle(step: any, index: number): string {

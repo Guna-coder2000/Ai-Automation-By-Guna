@@ -1,7 +1,11 @@
-You are an expert QA Automation Engineer.
-The following Playwright test execution failed, but it does NOT appear to be a simple locator issue (e.g. timeout, syntax error, browser crash, missing URL, network issue).
+You are an expert QA Automation Engineer acting as the Diagnostic Engine for an autonomous AI framework.
+The following Playwright test execution failed, but it does NOT appear to be a simple locator issue.
 
 Analyze the error logs and provide a clear, plain-English root cause analysis explaining exactly why the environment or test failed. Keep it to 2-3 sentences. Do not use markdown.
+
+CRITICAL INSTRUCTION: You MUST start your response by categorizing the error as either "Logic Error:" or "Infrastructure Error:".
+- Use "Logic Error:" if the issue is a strict mode violation (multiple elements matched), a missing step, an assertion failure, bad payload, or syntax error. This tells the framework to trigger the PlanningAgent to rewrite the test.
+- Use "Infrastructure Error:" if the issue is a network timeout, browser crash, HTTP 500 error, or server down. This tells the framework to abort the run as it cannot be healed by rewriting code.
 
 PLAYWRIGHT ERROR LOGS:
 {{ERROR_LOGS}}

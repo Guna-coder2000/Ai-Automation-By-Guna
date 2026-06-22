@@ -1,0 +1,54 @@
+{
+  "scenario": "Guru99 Insurance Login and Request",
+  "steps": [
+    {
+      "action": "navigate",
+      "target": "https://demo.guru99.com/insurance/v1/index.php",
+      "step": 1,
+      "value": ""
+    },
+    {
+      "action": "fill",
+      "target": "email",
+      "value": "test@example.com",
+      "step": 2
+    },
+    {
+      "action": "fill",
+      "target": "password",
+      "value": "password",
+      "step": 3
+    },
+    {
+      "action": "click",
+      "target": "loginButton",
+      "step": 4,
+      "value": ""
+    },
+    {
+      "action": "click",
+      "target": "requestQuotation",
+      "step": 5,
+      "value": ""
+    },
+    {
+      "action": "select",
+      "target": "breakdowncover",
+      "value": "1",
+      "step": 6
+    },
+    {
+      "action": "click",
+      "target": "saveQuotation",
+      "step": 7,
+      "value": ""
+    }
+  ],
+  "env": "default",
+  "applicationUrl": "https://demo.guru99.com/insurance/v1/index.php",
+  "testData": {
+    "email": "test@example.com",
+    "password": "password",
+    "breakdowncover": "1"
+  }
+}

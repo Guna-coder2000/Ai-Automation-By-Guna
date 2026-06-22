@@ -1,0 +1,25 @@
+{
+  "scenario": "Automation Exercise Registration",
+  "applicationUrl": "https://automationexercise.com/",
+  "steps": [
+    { "action": "navigate", "target": "https://automationexercise.com/" },
+    { "action": "click", "target": "signupLoginLink" },
+    { "action": "fill", "target": "signupName", "value": "John Doe Test" },
+    { "action": "fill", "target": "signupEmail", "value": "johndoe.test@example.com" },
+    { "action": "click", "target": "signupButton" },
+    { "action": "check", "target": "mrRadio" },
+    { "action": "fill", "target": "password", "value": "Password123" },
+    { "action": "select", "target": "days", "value": "1" },
+    { "action": "select", "target": "months", "value": "January" },
+    { "action": "select", "target": "years", "value": "2000" },
+    { "action": "click", "target": "createAccountButton" }
+  ],
+  "testData": {
+    "signupName": "John Doe Test",
+    "signupEmail": "johndoe.test@example.com",
+    "password": "Password123",
+    "days": "1",
+    "months": "January",
+    "years": "2000"
+  }
+}

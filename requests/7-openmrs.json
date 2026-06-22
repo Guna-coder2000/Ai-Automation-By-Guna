@@ -1,0 +1,32 @@
+{
+  "scenario": "OpenMRS Patient Registration",
+  "applicationUrl": "https://demo.openmrs.org/openmrs/login.htm",
+  "steps": [
+    { "action": "navigate", "target": "https://demo.openmrs.org/openmrs/login.htm" },
+    { "action": "fill", "target": "username", "value": "admin" },
+    { "action": "fill", "target": "password", "value": "Admin123" },
+    { "action": "click", "target": "inpatientWard" },
+    { "action": "click", "target": "loginButton" },
+    { "action": "click", "target": "registerPatientButton" },
+    { "action": "fill", "target": "givenName", "value": "Test" },
+    { "action": "fill", "target": "familyName", "value": "Patient" },
+    { "action": "click", "target": "nextButton" },
+    { "action": "select", "target": "gender", "value": "M" },
+    { "action": "click", "target": "nextButton" },
+    { "action": "fill", "target": "birthdateDay", "value": "01" },
+    { "action": "select", "target": "birthdateMonth", "value": "January" },
+    { "action": "fill", "target": "birthdateYear", "value": "1990" },
+    { "action": "click", "target": "nextButton" },
+    { "action": "click", "target": "confirmButton" }
+  ],
+  "testData": {
+    "username": "admin",
+    "password": "Admin123",
+    "givenName": "Test",
+    "familyName": "Patient",
+    "gender": "M",
+    "birthdateDay": "01",
+    "birthdateMonth": "January",
+    "birthdateYear": "1990"
+  }
+}

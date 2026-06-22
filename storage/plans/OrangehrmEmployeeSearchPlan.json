@@ -1,0 +1,60 @@
+{
+  "scenario": "OrangeHRM Employee Search",
+  "steps": [
+    {
+      "action": "navigate",
+      "target": "https://opensource-demo.orangehrmlive.com/",
+      "step": 1,
+      "value": ""
+    },
+    {
+      "action": "fill",
+      "target": "username",
+      "value": "Admin",
+      "step": 2
+    },
+    {
+      "action": "fill",
+      "target": "password",
+      "value": "admin123",
+      "step": 3
+    },
+    {
+      "action": "click",
+      "target": "loginButton",
+      "step": 4,
+      "value": ""
+    },
+    {
+      "action": "click",
+      "target": "pimModuleLink",
+      "step": 5,
+      "value": ""
+    },
+    {
+      "action": "fill",
+      "target": "employeeNameInput",
+      "value": "Charlie",
+      "step": 6
+    },
+    {
+      "action": "click",
+      "target": "searchButton",
+      "step": 7,
+      "value": ""
+    },
+    {
+      "action": "assertVisible",
+      "target": "employeeRecord",
+      "step": 8,
+      "value": ""
+    }
+  ],
+  "env": "default",
+  "applicationUrl": "https://opensource-demo.orangehrmlive.com/",
+  "testData": {
+    "username": "Admin",
+    "password": "admin123",
+    "employeeNameInput": "Charlie"
+  }
+}

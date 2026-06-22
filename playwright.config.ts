@@ -23,6 +23,7 @@ export default defineConfig({
   ['list'],
   ['html', { outputFolder: 'playwright-report' }],
   ['allure-playwright', { outputFolder: 'allure-results' }],
+  ['blob'],
 ],
   projects: [
     { name: 'chrome', use: { ...devices['Desktop Chrome'], channel: 'chrome' } },

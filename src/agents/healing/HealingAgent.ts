@@ -41,30 +41,26 @@ export class HealingAgent {
         return codeHealing;
       }
 
-      const inferredSuggestion = this.inferStableSelector(normalizedFailedSelector, pageContext);
-
       let promptSuggestion = '';
-      if (!inferredSuggestion) {
-        const provider = LLMProviderFactory.getProvider();
-        const template = await readFile(this.promptPath, 'utf-8');
-        this.logger.info(`HealingAgent: using prompt template ${this.promptPath}`);
-        const prompt = template
-          .replace('{{FAILED_SELECTOR}}', normalizedFailedSelector)
-          .replace('{{PAGE_HTML_SNIPPET}}', pageContext || 'Not available')
-          .replace('{{TARGET_REQUIREMENT}}', inferredRequirement);
+      const provider = LLMProviderFactory.getProvider();
+      const template = await readFile(this.promptPath, 'utf-8');
+      this.logger.info(`HealingAgent: using prompt template ${this.promptPath}`);
+      const prompt = template
+        .replace('{{FAILED_SELECTOR}}', normalizedFailedSelector)
+        .replace('{{PAGE_HTML_SNIPPET}}', pageContext || 'Not available')
+        .replace('{{TARGET_REQUIREMENT}}', inferredRequirement);
 
-        try {
-          const rawSuggestion = await provider.generate(prompt);
-          promptSuggestion = this.cleanSelector(rawSuggestion);
-        } catch (llmErr) {
-          this.logger.warn('HealingAgent: LLM generation failed, using local DOM heuristic fallback', { error: llmErr });
-          promptSuggestion = this.generateStructuredFallback(normalizedFailedSelector, pageContext);
-        }
+      try {
+        const rawSuggestion = await provider.generate(prompt);
+        promptSuggestion = this.cleanSelector(rawSuggestion);
+      } catch (llmErr) {
+        this.logger.warn('HealingAgent: LLM generation failed, using local DOM heuristic fallback', { error: llmErr });
+        promptSuggestion = this.generateStructuredFallback(normalizedFailedSelector, pageContext);
       }
 
-      const suggestion = inferredSuggestion || promptSuggestion;
+      const suggestion = promptSuggestion;
       this.validateSelector(suggestion);
-      this.logger.info(`HealingAgent: accepted ${inferredSuggestion ? 'local inference' : 'prompt output'} "${suggestion}"`);
+      this.logger.info(`HealingAgent: accepted suggestion "${suggestion}"`);
 
       const targetFile = await this.findFileContainingSelector(locatorFile, normalizedFailedSelector);
       const content = await readFile(targetFile, 'utf-8');
@@ -102,9 +98,15 @@ export class HealingAgent {
        return `text="${textMatch[1]}"`;
     }
     
+    // Playwright text locator fallback
+    const pwTextMatch = failedSelector.match(/^text=['"]([^'"]+)['"]/);
+    if (pwTextMatch && pwTextMatch[1]) {
+       return `text=${pwTextMatch[1]}`;
+    }
+
     // Fallback 3: Clean up complex CSS
-    const cleanCssMatch = failedSelector.match(/^[a-z0-9#-]+/i);
-    if (cleanCssMatch && cleanCssMatch[0]) {
+    const cleanCssMatch = failedSelector.match(/^[a-z0-9#-]+(?:\[[^\]]+\])?/i);
+    if (cleanCssMatch && cleanCssMatch[0] && cleanCssMatch[0] !== 'text') {
        return cleanCssMatch[0];
     }
 
@@ -306,151 +308,7 @@ export class HealingAgent {
   }
 
   private inferTargetRequirement(failedSelector: string, pageContext: string, fallback: string): string {
-    const productName = this.inferSauceDemoProductName(failedSelector, pageContext);
-    if (productName) {
-      return `${productName} Add to cart button`;
-    }
     return fallback;
-  }
-
-  private inferStableSelector(failedSelector: string, pageContext: string): string | undefined {
-    const failedSelectorSuggestion = this.inferFromFailedSelector(failedSelector);
-    if (failedSelectorSuggestion) return failedSelectorSuggestion;
-
-    const domSuggestion = this.inferFromDomContext(failedSelector, pageContext);
-    if (domSuggestion) return domSuggestion;
-
-    const commonSelector = this.inferCommonStableSelector(failedSelector, pageContext);
-    if (commonSelector) return commonSelector;
-
-    const productName = this.inferSauceDemoProductName(failedSelector, pageContext);
-    if (!productName) return undefined;
-
-    const productSlug = productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    return `//button[@id="add-to-cart-${productSlug}"]`;
-  }
-
-  private inferFromFailedSelector(failedSelector: string): string | undefined {
-    const failed = failedSelector.toLowerCase();
-
-    if (/type=["']?passwo|newpassword|new password/.test(failed)) {
-      return "(//input[@type='password'])[1]";
-    }
-
-    if (/confirmpassword|confirm password|nth-of-type\(2\)/.test(failed)) {
-      return "(//input[@type='password'])[2]";
-    }
-
-    if (/loginutton|login.?button/.test(failed)) {
-      return 'button[type="submit"]';
-    }
-
-    // Smart fallback for explicit value/placeholder matches
-    const valueMatch = failedSelector.match(/value=['"]([^'"]+)['"]/i);
-    if (valueMatch && valueMatch[1]) {
-      return `[value="${valueMatch[1]}"]`;
-    }
-
-    return undefined;
-  }
-
-  private inferFromDomContext(failedSelector: string, pageContext: string): string | undefined {
-    if (!pageContext) return undefined;
-
-    const failed = failedSelector.toLowerCase();
-    const context = pageContext.toLowerCase();
-
-    // 1. Password fallback
-    if (/passwo|password/.test(failed) && /input[^>]+type=["']password["']/.test(context)) {
-      return /confirm|nth-of-type\(2\)/.test(failed)
-        ? "(//input[@type='password'])[2]"
-        : "(//input[@type='password'])[1]";
-    }
-
-    // 2. Generic Placeholder Extractor (e.g. input[placeholder='First Name'])
-    const placeholderMatch = failedSelector.match(/placeholder=['"]([^'"]+)['"]/i);
-    if (placeholderMatch && placeholderMatch[1]) {
-      const placeholderText = placeholderMatch[1];
-      if (context.includes(placeholderText.toLowerCase())) {
-        return `input[placeholder="${placeholderText}"]`;
-      }
-    }
-
-    // 3. Generic Text Matcher for buttons or links (e.g. button:has-text('Submit'))
-    const textMatch = failedSelector.match(/text=['"]?([^'"\])]+)['"]?/i) || failedSelector.match(/>([^<]+)</);
-    if (textMatch && textMatch[1]) {
-      const cleanText = textMatch[1].trim();
-      if (cleanText.length > 2 && context.includes(cleanText.toLowerCase())) {
-        if (/button|btn|submit/i.test(failed)) return `button:has-text("${cleanText}")`;
-        if (/a|link|href/i.test(failed)) return `a:has-text("${cleanText}")`;
-        return `*:has-text("${cleanText}")`;
-      }
-    }
-
-    // 4. Input types (email, tel, number)
-    const typeMatch = failedSelector.match(/type=['"](email|tel|number|radio|checkbox)['"]/i);
-    if (typeMatch && typeMatch[1]) {
-       const type = typeMatch[1].toLowerCase();
-       if (context.includes(`type="${type}"`) || context.includes(`type='${type}'`)) {
-         return `input[type="${type}"]`;
-       }
-    }
-
-    return undefined;
-  }
-
-  private inferCommonStableSelector(failedSelector: string, pageContext: string): string | undefined {
-    const failed = failedSelector.toLowerCase();
-    const context = pageContext.toLowerCase();
-    const combined = `${failed}\n${context}`;
-
-    if (/loginbutton|login.?button|button "login"|loginutton|login-button/.test(combined)) {
-      if (!/saucedemo|login-button|user-name/.test(combined)) return 'button[type="submit"]';
-      return "//input[@id='login-button']";
-    }
-
-    if (/usernameinput|user.?name|textbox "username"|user-name/.test(combined)) {
-      if (!/saucedemo|user-name/.test(combined)) return 'input[name="username"]';
-      return "//input[@id='user-name']";
-    }
-
-    if (/passwordinput|password|textbox "password"/.test(combined)) {
-      if (/type=["']?passwo|newpassword|new password|nth-of-type\(1\)/.test(failed)) {
-        return "(//input[@type='password'])[1]";
-      }
-      if (/confirmpassword|confirm password|nth-of-type\(2\)/.test(failed)) {
-        return "(//input[@type='password'])[2]";
-      }
-      if (!/saucedemo/.test(combined)) return 'input[name="password"], input[type="password"]';
-      return "//input[@id='password']";
-    }
-
-    if (/productstitle|products page|\.title/.test(combined)) {
-      return '.title';
-    }
-
-    return undefined;
-  }
-
-  private inferSauceDemoProductName(failedSelector: string, pageContext: string): string | undefined {
-    const normalizedSelector = failedSelector.toLowerCase();
-    const normalizedContext = pageContext.toLowerCase();
-    const products = [
-      'Sauce Labs Backpack',
-      'Sauce Labs Fleece Jacket',
-      'Sauce Labs Bike Light',
-      'Sauce Labs Bolt T-Shirt',
-      'Sauce Labs Onesie',
-      'Test.allTheThings() T-Shirt (Red)',
-    ];
-
-    return products.find((product) => {
-      const words = product.toLowerCase().match(/[a-z0-9]+/g) ?? [];
-      const meaningfulWords = words.filter((word) => !['sauce', 'labs', 'the', 'red'].includes(word));
-      return meaningfulWords.length > 0
-        && meaningfulWords.every((word) => normalizedSelector.includes(word))
-        && (!pageContext || normalizedContext.includes(product.toLowerCase()));
-    });
   }
 
   private isGenericSelector(selector: string): boolean {

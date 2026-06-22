@@ -53,13 +53,13 @@ export class ExecutionAgent {
       child.stdout?.on('data', (data: Buffer) => {
         const chunk = data.toString();
         stdout += chunk;
-        if (chunk.trim()) this.logger.info(chunk.trimEnd());
+        if (chunk.trim()) this.logger.debug(chunk.trimEnd());
       });
 
       child.stderr?.on('data', (data: Buffer) => {
         const chunk = data.toString();
         stderr += chunk;
-        if (chunk.trim()) this.logger.warn(chunk.trimEnd());
+        if (chunk.trim()) this.logger.debug(chunk.trimEnd());
       });
 
       child.on('error', (error) => {

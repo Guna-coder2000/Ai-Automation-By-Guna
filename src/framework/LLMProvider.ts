@@ -19,8 +19,6 @@
  * ──────────────────────────────────────────────────────────────────────
  */
 
-import fetch from 'node-fetch';
-import type { Response as FetchResponse } from 'node-fetch';
 import Logger from '../utils/logger';
 
 // ──────────────────────────────────────────────────────────────────────
@@ -168,14 +166,20 @@ class GroqProvider implements LLMProvider {
       max_tokens: 4096,
     };
 
-    let response = await fetchWithRetry(this.endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify(body),
-    }, 'Groq');
+    let response;
+    try {
+      response = await fetchWithRetry(this.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify(body),
+      }, 'Groq');
+    } catch (err: any) {
+       console.error('GROQ FETCH ERROR:', err);
+       throw err;
+    }
 
     // Handle Groq-specific rate limiting with smart retry
     if (response.status === 429) {
@@ -333,7 +337,7 @@ async function fetchWithRetry(
   providerName: string,
   maxRetries = 2,
   baseDelayMs = 1000
-): Promise<FetchResponse> {
+): Promise<Response> {
   let lastError: Error | undefined;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -371,7 +375,7 @@ async function fetchWithRetry(
 /**
  * Validate HTTP response — throw descriptive error if not OK.
  */
-async function ensureOk(response: FetchResponse, provider: string): Promise<void> {
+async function ensureOk(response: Response, provider: string): Promise<void> {
   if (response.ok) return;
 
   const body = await response.text();

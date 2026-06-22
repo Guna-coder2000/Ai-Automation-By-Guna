@@ -12,52 +12,40 @@ OUTPUT RULES:
 - The code MUST be ready to execute immediately without syntax errors.
 
 ENTERPRISE CODE STRUCTURE & STANDARDS:
-1. **Imports**: Import `test` and `expect` from `@playwright/test`.
-2. **Test Steps**: You MUST wrap every single API call and major assertion block inside a `test.step("description", async () => { ... })` for brilliant HTML reporting.
-3. **Environment Management**: Use `process.env.BASE_URL` if a base URL isn't explicitly provided, falling back to a safe default.
-4. **Headers & Auth**: Ensure robust handling of Headers (e.g., `Accept`, `Content-Type`, `Authorization`).
-5. **Assertions**: Assert MORE than just status codes:
-   - Verify Response Time (e.g., `expect(response.ok()).toBeTruthy()`)
-   - Verify specific JSON body structures and types
-   - Verify Headers (e.g., `expect(response.headers()['content-type']).toContain('application/json')`)
-6. **Error Handling**: Log response bodies safely if a test fails or for context.
+1. **Imports**: Import `test` and `expect` from `@playwright/test`. Also import `CommonApiActions` from `../../src/framework/CommonApiActions`.
+2. **Setup**: Initialize `CommonApiActions` inside the test: `const api = new CommonApiActions(request);`
+3. **Test Steps**: You MUST wrap every single API call and major assertion block inside a `test.step("description", async () => { ... })` for brilliant HTML reporting.
+4. **Environment Management**: You must be application agnostic. Use dynamic paths and `process.env.BASE_URL` rather than hardcoding external URLs like reqres.in unless specifically requested.
+5. **Headers & Auth**: Ensure robust, dynamic handling of Headers (e.g. bearer tokens, content types). Infer these logically from the requirement.
+6. **Assertions**: `CommonApiActions` automatically asserts status codes. You should assert the returned JSON body structures securely without rigid data assumptions.
 
 EXAMPLE ENTERPRISE SCRIPT:
 
 import { test, expect } from '@playwright/test';
+import { CommonApiActions } from '../../src/framework/CommonApiActions';
 
 test.describe('Enterprise API Automation Suite', () => {
   const baseUrl = process.env.BASE_URL || 'https://reqres.in/api';
   let createdUserId: string;
 
   test('E2E API Workflow: Create, Verify, and Delete User', async ({ request }) => {
+    const api = new CommonApiActions(request);
     
     await test.step('1. Create a new user via POST request', async () => {
-      const response = await request.post(`${baseUrl}/users`, {
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        data: { name: 'morpheus', job: 'leader' }
-      });
+      const responseBody = await api.post(`${baseUrl}/users`, 
+        { name: 'morpheus', job: 'leader' }, 
+        201, 
+        { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+      );
       
-      expect(response.ok(), `Expected successful request, got ${response.status()}`).toBeTruthy();
-      expect(response.status()).toBe(201);
-      
-      const body = await response.json();
-      expect(body).toHaveProperty('id');
-      expect(body.name).toBe('morpheus');
-      createdUserId = body.id;
+      expect(responseBody).toHaveProperty('id');
+      expect(responseBody.name).toBe('morpheus');
+      createdUserId = responseBody.id;
     });
 
     await test.step('2. Verify the created user details via GET request', async () => {
-      const response = await request.get(`${baseUrl}/users/${createdUserId}`);
-      
-      // Note: For mocked APIs, 404 might happen on rapid fetch, assert gracefully
-      expect([200, 404]).toContain(response.status()); 
-      
-      if(response.status() === 200) {
-        const body = await response.json();
-        expect(body.data).toBeDefined();
-        expect(response.headers()['content-type']).toContain('application/json');
-      }
+      const responseBody = await api.get(`${baseUrl}/users/${createdUserId}`, 200);
+      expect(responseBody.data).toBeDefined();
     });
 
   });

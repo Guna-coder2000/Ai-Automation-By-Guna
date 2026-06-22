@@ -53,20 +53,29 @@ export class AnalysisAgent {
   }
 
   private analyzeOffline(errorOutput: string): string {
+    if (/strict mode violation/i.test(errorOutput) || /resolved to \d+ elements/i.test(errorOutput)) {
+      return "Logic Error (Strict Mode Violation): The generated locator matches multiple elements on the page. The logic must be updated to be more specific.";
+    }
+    if (/status 5\d\d|internal server error/i.test(errorOutput)) {
+      return "Infrastructure Error (HTTP 500): The server returned an Internal Server Error during the test. The backend environment may be down or crashing.";
+    }
+    if (/status 4\d\d|unauthorized|forbidden|bad request/i.test(errorOutput)) {
+      return "Logic Error (HTTP 400+): The application returned a client error. The test might be using invalid auth tokens, missing headers, or sending bad payloads.";
+    }
     if (/ERR_CONNECTION_REFUSED|ERR_NAME_NOT_RESOLVED/i.test(errorOutput)) {
-      return "Network Connection Error: The browser failed to navigate to the application URL. The application might be down or inaccessible from this network.";
+      return "Infrastructure Error (Network): The browser failed to navigate to the application URL. The application might be down or inaccessible from this network.";
     }
     if (/Test timeout of \d+ms exceeded/i.test(errorOutput)) {
-      return "Timeout Error: The test exceeded the maximum allowed execution time before completing. The application might be responding too slowly or a background process hung.";
+      return "Infrastructure/Logic Error (Timeout): The test exceeded the maximum allowed execution time before completing. The application might be responding too slowly or a background process hung.";
     }
     if (/Target page, context or browser has been closed/i.test(errorOutput)) {
-      return "Browser Crash: The Playwright browser context was unexpectedly closed during execution. This usually indicates a fatal browser crash or an external process killing the browser.";
+      return "Infrastructure Error (Crash): The Playwright browser context was unexpectedly closed during execution. This usually indicates a fatal browser crash or an external process killing the browser.";
     }
     if (/SyntaxError|ReferenceError/i.test(errorOutput)) {
-      return "Syntax Error: There is a fatal TypeScript syntax or reference error in the generated test code or page object.";
+      return "Logic Error (Syntax): There is a fatal TypeScript syntax or reference error in the generated test code or page object. Requires code fix.";
     }
     if (/expect\(.*?\)\.toHaveURL/i.test(errorOutput) || /expect\(.*?\)\.toBeVisible/i.test(errorOutput) || /expected .* to be visible/i.test(errorOutput)) {
-      return "Assertion Error: A logic or flow assertion failed. Expected element or URL was not reached. Logic issue.";
+      return "Logic Error (Assertion): A logic or flow assertion failed. Expected element or URL was not reached. Logic issue.";
     }
     return "Unknown Error: The execution crashed for an undefined reason not related to locators. Manual log inspection required.";
   }

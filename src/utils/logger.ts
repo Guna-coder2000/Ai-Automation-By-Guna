@@ -57,6 +57,10 @@ class Logger {
     this.logger.info(message, meta);
   }
 
+  public debug(message: string, meta?: Record<string, unknown>) {
+    this.logger.debug(message, meta);
+  }
+
   public warn(message: string, meta?: Record<string, unknown>) {
     this.logger.warn(message, meta);
   }

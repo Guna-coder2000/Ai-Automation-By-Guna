@@ -67,6 +67,7 @@ PAGE_OBJECT SECTION RULES:
 - ADVANCED ACTIONS: `waitForDOMStabilization` (use before critical clicks), `verifyVisualMatch` (use for visual assertions), `verifyVisibleSoft` (for non-blocking assertions), `mockApiResponse` (to mock backend endpoints).
 - NEVER use raw Playwright terms like `click` or `fill`.
 - NEVER use `waitFor({ state: 'enabled' })`.
+- ABSOLUTELY NEVER use `page.waitForTimeout(...)`. All waits must be 100% dynamic using Playwright assertions or `CommonActions` (which use smart auto-waits).
 
 Example:
 ```typescript

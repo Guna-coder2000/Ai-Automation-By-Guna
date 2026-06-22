@@ -1,0 +1,113 @@
+{
+  "scenario": "OpenMRS Patient Registration",
+  "steps": [
+    {
+      "action": "navigate",
+      "target": "https://demo.openmrs.org/openmrs/login.htm",
+      "step": 1,
+      "value": ""
+    },
+    {
+      "action": "fill",
+      "target": "username",
+      "value": "admin",
+      "step": 2
+    },
+    {
+      "action": "fill",
+      "target": "password",
+      "value": "Admin123",
+      "step": 3
+    },
+    {
+      "action": "click",
+      "target": "inpatientWard",
+      "step": 4,
+      "value": ""
+    },
+    {
+      "action": "click",
+      "target": "loginButton",
+      "step": 5,
+      "value": ""
+    },
+    {
+      "action": "click",
+      "target": "registerPatientButton",
+      "step": 6,
+      "value": ""
+    },
+    {
+      "action": "fill",
+      "target": "givenName",
+      "value": "Test",
+      "step": 7
+    },
+    {
+      "action": "fill",
+      "target": "familyName",
+      "value": "Patient",
+      "step": 8
+    },
+    {
+      "action": "click",
+      "target": "nextButton",
+      "step": 9,
+      "value": ""
+    },
+    {
+      "action": "select",
+      "target": "gender",
+      "value": "M",
+      "step": 10
+    },
+    {
+      "action": "click",
+      "target": "nextButton",
+      "step": 11,
+      "value": ""
+    },
+    {
+      "action": "fill",
+      "target": "birthdateDay",
+      "value": "01",
+      "step": 12
+    },
+    {
+      "action": "select",
+      "target": "birthdateMonth",
+      "value": "January",
+      "step": 13
+    },
+    {
+      "action": "fill",
+      "target": "birthdateYear",
+      "value": "1990",
+      "step": 14
+    },
+    {
+      "action": "click",
+      "target": "nextButton",
+      "step": 15,
+      "value": ""
+    },
+    {
+      "action": "click",
+      "target": "confirmButton",
+      "step": 16,
+      "value": ""
+    }
+  ],
+  "env": "default",
+  "applicationUrl": "https://demo.openmrs.org/openmrs/login.htm",
+  "testData": {
+    "username": "admin",
+    "password": "Admin123",
+    "givenName": "Test",
+    "familyName": "Patient",
+    "gender": "M",
+    "birthdateDay": "01",
+    "birthdateMonth": "January",
+    "birthdateYear": "1990"
+  }
+}
