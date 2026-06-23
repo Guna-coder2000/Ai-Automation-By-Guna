@@ -1,0 +1,32 @@
+{
+  "scenario": "Validate Authentication flow on SauceDemo",
+  "steps": [
+    {
+      "step": 1,
+      "action": "navigate",
+      "target": "https://www.saucedemo.com/"
+    },
+    {
+      "step": 2,
+      "action": "fill",
+      "target": "usernameInput",
+      "value": "standard_user"
+    },
+    {
+      "step": 3,
+      "action": "fill",
+      "target": "passwordInput",
+      "value": "secret_sauce"
+    }
+  ],
+  "env": "default",
+  "applicationUrl": "https://www.saucedemo.com/",
+  "locators": {
+    "usernameInput": "//input[@placeholder=\"Username\"]",
+    "passwordInput": "//input[@placeholder=\"Password\"]"
+  },
+  "testData": {
+    "username": "standard_user",
+    "password": "secret_sauce"
+  }
+}

@@ -1,14 +1,6 @@
 {
   "scenario": "The Internet UI Components Testing",
   "applicationUrl": "https://the-internet.herokuapp.com/",
-  "steps": [
-    { "action": "navigate", "target": "https://the-internet.herokuapp.com/" },
-    { "action": "click", "target": "javascriptAlertsLink" },
-    { "action": "click", "target": "jsAlertButton" },
-    { "action": "navigate", "target": "https://the-internet.herokuapp.com/" },
-    { "action": "click", "target": "dynamicControlsLink" },
-    { "action": "click", "target": "removeCheckboxButton" },
-    { "action": "assertVisible", "target": "checkboxGoneMessage" }
-  ],
+  
   "testData": {}
 }

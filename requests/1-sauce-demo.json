@@ -1,16 +1,7 @@
 {
   "scenario": "Validate Authentication flow on SauceDemo",
   "applicationUrl": "https://www.saucedemo.com/",
-  "steps": [
-    { "action": "navigate", "target": "https://www.saucedemo.com/" },
-    { "action": "fill", "target": "username", "value": "standard_user" },
-    { "action": "fill", "target": "password", "value": "secret_sauce" },
-    { "action": "click", "target": "login-button" },
-    { "action": "assertVisible", "target": "inventory_container" },
-    { "action": "click", "target": "react-burger-menu-btn" },
-    { "action": "click", "target": "logout_sidebar_link" },
-    { "action": "assertVisible", "target": "login-button" }
-  ],
+
   "testData": {
     "username": "standard_user",
     "password": "secret_sauce"

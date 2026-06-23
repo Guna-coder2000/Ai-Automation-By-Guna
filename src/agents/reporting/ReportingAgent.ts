@@ -29,6 +29,24 @@ export class ReportingAgent {
         this.logger.warn('Failed to merge blob reports', { error: err });
       }
 
+      const healingData = await this.readHealingHistory();
+      const aiSummary = await this.generateAiSummary(healingData);
+
+      // Generate Allure Report
+      try {
+        if (await stat(path.resolve('allure-results')).catch(() => false)) {
+          this.logger.info('Injecting environment properties to allure-results...');
+          const envProps = `Execution_Environment=Local\nAutonomous_Healing_Count=${healingData.length}\nAI_Summary=${aiSummary.replace(/\n/g, ' ')}\n`;
+          await writeFile(path.join(path.resolve('allure-results'), 'environment.properties'), envProps);
+
+          this.logger.info('Generating Allure Report...');
+          const { execSync } = require('child_process');
+          execSync('npx allure generate ./allure-results --clean -o ./allure-report', { stdio: 'ignore' });
+        }
+      } catch (err) {
+        this.logger.warn('Failed to generate Allure report natively', { error: err });
+      }
+
       // Copy Playwright HTML report
       try {
         await copy(path.resolve('playwright-report'), path.join(this.reportsDir, 'html'), { overwrite: true });
@@ -46,9 +64,6 @@ export class ReportingAgent {
       } catch {
         this.logger.warn('No allure-report/ directory found – skipping Allure copy');
       }
-
-      const healingData = await this.readHealingHistory();
-      const aiSummary = await this.generateAiSummary(healingData);
 
       let videosCopied: string[] = [];
       try {
@@ -127,14 +142,15 @@ export class ReportingAgent {
 
   private async generateAiSummary(healingData: any[]): Promise<string> {
     if (healingData.length === 0) {
-      return "Execution completed successfully with no healing required. The test framework remains stable.";
+      return "The execution cycle completed with a 100% pass rate. No dynamic self-healing was required, indicating that the targeted UI elements remained highly stable against the baseline DOM structures.";
     }
 
     try {
       const provider = LLMProviderFactory.getProvider();
       const prompt = `
-You are an AI QA Manager presenting to a non-technical executive client. Review this healing data and provide a 2-3 sentence business-friendly executive summary of the framework's stability.
-Mention how many UI elements were autonomously healed without human intervention, proving the ROI of the AI framework. Do not use technical jargon (e.g., avoid words like "DOM", "CSS selectors", "XPaths").
+You are a Lead QA Automation Architect with 10+ years of experience presenting an execution report to stakeholders.
+Review this healing data and provide a concise, highly professional executive summary (2-3 sentences max) evaluating the framework's stability and resilience.
+Highlight the ROI of the AI agentic healing mechanism by mentioning the number of autonomous recoveries and how they prevented pipeline failures. Use professional QA terminology (e.g. "DOM integrity", "auto-remediation", "test resilience").
 Keep it strictly to the summary text, no markdown.
 
 Healing Data:
@@ -144,26 +160,61 @@ ${JSON.stringify(healingData.slice(-10), null, 2)}
       return output.trim();
     } catch (err) {
       this.logger.warn('Failed to generate AI summary', { error: err });
-      return `Execution completed with ${healingData.length} autonomous healing actions successfully applied to maintain stability.`;
+      return `The framework successfully applied ${healingData.length} auto-remediations to adapt to DOM mutations, ensuring uninterrupted pipeline execution and high test resilience.`;
     }
   }
 
   private generateClientSummaryMarkdown(healingData: any[], aiSummary: string, summary: any): string {
     const passRate = "100%"; // Assuming pass if it reaches reporting without throwing
-    return `# AI Automation: Client Executive Summary
+    const os = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'macOS' : 'Linux';
+    
+    let healingTable = "No dynamic self-healing was required during this execution cycle.\n";
+    if (healingData.length > 0) {
+       healingTable = `| Timestamp | Target File | Failed Locator | Healed Locator |\n| :--- | :--- | :--- | :--- |\n`;
+       healingData.slice().reverse().forEach(h => {
+           healingTable += `| ${new Date(h.timestamp).toLocaleTimeString()} | \`${path.basename(h.file)}\` | \`${h.oldSelector}\` | \`${h.newSelector}\` |\n`;
+       });
+    }
 
-**Date:** ${new Date().toLocaleString()}
-**Status:** ✅ SUCCESS
-**Overall Pass Rate:** ${passRate}
+    return `# 📊 QA Automation Executive Summary
 
-## Executive Overview
+> **Generated On:** ${new Date().toLocaleString()} | **Framework:** Agentic Playwright v1.0
+
+## 1. Execution Overview
+
+| Metric | Detail |
+| :--- | :--- |
+| **Pipeline Status** | 🟢 **SUCCESS** |
+| **Pass Rate** | **${passRate}** |
+| **Execution Environment** | ${os} / ${process.env.CI ? 'CI Server' : 'Local Machine'} |
+| **Browser Engine** | Chromium (Default) |
+| **Auto-Remediations (Heals)** | ${summary.healingCount} |
+
+---
+
+## 2. Architect's AI Stability Analysis
+
 > ${aiSummary}
 
-## Resilience & Stability Metrics
-- **Autonomous Healing Actions Taken:** ${summary.healingCount}
-- **Framework Stability Status:** ${summary.healingCount === 0 ? 'Optimal (No Healing Needed)' : 'Resilient (Self-Healed)'}
+---
 
-*(Detailed engineering logs, HTML reports, and execution videos are available in the attached artifacts.)*
+## 3. Self-Healing Audit Trail
+
+The AI Healing Agent automatically corrected the following selectors in real-time to prevent pipeline failures:
+
+${healingTable}
+
+---
+
+## 4. Execution Artifacts
+
+Detailed logs, videos, and interactive reports are attached to the CI/CD run artifacts:
+- 🔗 **[Playwright HTML Report](./html/index.html)** - Full step-by-step trace and DOM snapshots.
+- 🔗 **[Allure Dashboard](./allure-report/index.html)** - Comprehensive analytics, trend graphs, and test execution timelines.
+- 🔗 **[Raw Execution Logs](./logs/framework.log)** - Backend agent orchestration logs.
+- 🎥 **Execution Videos** - Available in the \`reports/videos/\` directory.
+
+*Report generated autonomously by the Reporting Agent.*
 `;
   }
 

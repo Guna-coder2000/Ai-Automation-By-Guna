@@ -1,20 +1,7 @@
 {
   "scenario": "Banking Application Customer Flow",
   "applicationUrl": "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login",
-  "steps": [
-    { "action": "navigate", "target": "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login" },
-    { "action": "click", "target": "customerLoginButton" },
-    { "action": "select", "target": "userSelect", "value": "Harry Potter" },
-    { "action": "click", "target": "loginButton" },
-    { "action": "click", "target": "depositTab" },
-    { "action": "fill", "target": "amountInput", "value": "500" },
-    { "action": "click", "target": "depositSubmitButton" },
-    { "action": "assertText", "target": "message", "value": "Deposit Successful" },
-    { "action": "click", "target": "withdrawTab" },
-    { "action": "fill", "target": "amountInput", "value": "200" },
-    { "action": "click", "target": "withdrawSubmitButton" },
-    { "action": "assertText", "target": "message", "value": "Transaction successful" }
-  ],
+  
   "testData": {
     "userSelect": "Harry Potter",
     "amountInput": "500",

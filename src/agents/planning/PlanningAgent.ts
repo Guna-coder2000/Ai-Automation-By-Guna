@@ -153,6 +153,7 @@ ${domSnapshot.slice(0, 3000)}`;
   }
 
   private async createSteps(rawRequest: string, req: any): Promise<any[]> {
+    let domSnapshot = '';
     try {
       const template = await readFile(this.promptPath, 'utf-8');
       const existingTests = await this.scanForExistingTests();
@@ -167,7 +168,7 @@ ${domSnapshot.slice(0, 3000)}`;
         const discovery = new DiscoveryAgent();
         const url = req.applicationUrl ?? process.env.BASE_URL;
         if (url) {
-          const domSnapshot = await discovery.discoverDOM(url);
+          domSnapshot = await discovery.discoverDOM(url);
           if (domSnapshot) {
              domContext = `\n\nREAL APPLICATION DOM SNAPSHOT:\n${domSnapshot}\n\nUse this DOM to generate exact, highly accurate XPaths for your steps.`;
           }
@@ -190,7 +191,7 @@ ${domSnapshot.slice(0, 3000)}`;
     }
 
     this.logger.info('PlanningAgent: local fallback preserves provided locators and uses semantic names when locators are missing');
-    return this.createFallbackSteps(req);
+    return await this.createFallbackSteps(req, domSnapshot);
   }
 
 
@@ -215,9 +216,22 @@ ${domSnapshot.slice(0, 3000)}`;
     return (fenced ? fenced[1] : trimmed).trim();
   }
 
-  private createFallbackSteps(req: any): any[] {
+  private async createFallbackSteps(req: any, domSnapshot?: string): Promise<any[]> {
     if (Array.isArray(req.steps) && req.steps.length) {
       return this.normalizeSteps(req.steps);
+    }
+
+    if (!domSnapshot && (!req.locators || Object.keys(req.locators).length === 0)) {
+       try {
+         const { DiscoveryAgent } = await import('../discovery/DiscoveryAgent');
+         const discovery = new DiscoveryAgent();
+         const url = req.applicationUrl ?? process.env.BASE_URL;
+         if (url) {
+           domSnapshot = await discovery.discoverDOM(url);
+         }
+       } catch (err) {
+         this.logger.warn('PlanningAgent: fallback DOM discovery failed', { error: err });
+       }
     }
 
     const locators = req.locators ?? {};
@@ -233,11 +247,37 @@ ${domSnapshot.slice(0, 3000)}`;
       return steps;
     }
 
+    const lowerDom = (domSnapshot || '').toLowerCase();
+
     // Generic mapping of test data
     for (const [key, value] of Object.entries(req.testData)) {
       if (value === undefined || value === null) continue;
 
-      const target = this.pickLocatorTarget(locators, [key, `${key}Input`, `${key}Field`], key);
+      let target = this.pickLocatorTarget(locators, [key, `${key}Input`, `${key}Field`], key);
+      
+      let verifiedInUI = false;
+
+      // If we have DOM snapshot, verify target exists in UI before creating a step
+      if (domSnapshot) {
+         if (locators[target]) {
+             verifiedInUI = true;
+         } else {
+             const locator = this.extractDynamicLocatorOffline(domSnapshot, key);
+             if (locator) {
+                target = `${key}Input`;
+                locators[target] = locator;
+                verifiedInUI = true;
+             }
+         }
+      } else {
+         verifiedInUI = true; // Without DOM, we must assume it's valid
+      }
+
+      if (!verifiedInUI) {
+          this.logger.warn(`PlanningAgent: Target '${key}' from inputData not found in real DOM. Skipping offline step generation.`);
+          continue;
+      }
+
       steps.push({
         step: steps.length + 1,
         action: 'fill',
@@ -245,8 +285,69 @@ ${domSnapshot.slice(0, 3000)}`;
         value,
       });
     }
+    
+    // Dynamically look for any primary action button (submit/login/continue) in the DOM for forms
+    if (domSnapshot && steps.length > 1) {
+       const submitRegex = /<button[^>]*?(type=["']submit["']|id=["'][^"']*(submit|login|continue|sign-in)[^"']*["'])[^>]*?>/i;
+       const match = domSnapshot.match(submitRegex);
+       if (match) {
+          const target = 'submitButton';
+          steps.push({
+             step: steps.length + 1,
+             action: 'click',
+             target
+          });
+          
+          const typeMatch = match[1];
+          if (typeMatch.toLowerCase() === 'type="submit"') {
+              locators[target] = '//button[@type="submit"]';
+          } else {
+              const idRegex = /id=["']([^"']+)["']/.exec(typeMatch);
+              if (idRegex && idRegex[1]) {
+                  locators[target] = `//button[@id="${idRegex[1]}"]`;
+              }
+          }
+       }
+    }
+
+    // Save locators back to request so they get exported to the Plan JSON
+    req.locators = locators;
 
     return steps;
+  }
+
+  private extractDynamicLocatorOffline(dom: string, target: string): string | undefined {
+    const cleanTarget = target.replace(/button|btn|link|input|field$/i, '').trim();
+    if (!cleanTarget) return undefined;
+    
+    // Convert target to a loose regex pattern to match 'user-name' when target is 'username', or 'login_button' for 'login button'
+    const looseTarget = cleanTarget.replace(/[-_\s]+/g, '').split('').join('[-_\\s]?');
+
+    const attrRegex = new RegExp(`<([a-zA-Z0-9-]+)[^>]*?(id|name|data-[a-zA-Z0-9-]+|aria-label|placeholder)=["']?([^"'>]*?${looseTarget}[^"'>]*?)["']?[^>]*?>`, 'i');
+    const match = dom.match(attrRegex);
+    
+    if (match) {
+       const tag = match[1].toLowerCase();
+       const attrName = match[2].toLowerCase();
+       const attrValue = match[3];
+       return `//${tag}[@${attrName}="${attrValue}"]`;
+    }
+    
+    const textRegex = new RegExp(`<([a-zA-Z0-9-]+)[^>]*?>([^<]*?${looseTarget}[^<]*?)</\\1>`, 'i');
+    const textMatch = dom.match(textRegex);
+    if (textMatch) {
+       const tag = textMatch[1].toLowerCase();
+       const textValue = textMatch[2].trim();
+       if (textValue) {
+           return `//${tag}[contains(normalize-space(.), "${textValue}")]`;
+       }
+    }
+    
+    return undefined;
+  }
+
+  private escapeRegExp(string: string): string {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private normalizeLocatorAliases(locatorsInput: unknown): Record<string, string> {

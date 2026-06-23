@@ -1,18 +1,7 @@
 {
   "scenario": "SuiteCRM Create Lead",
   "applicationUrl": "https://demo.suiteondemand.com/",
-  "steps": [
-    { "action": "navigate", "target": "https://demo.suiteondemand.com/" },
-    { "action": "fill", "target": "username", "value": "will" },
-    { "action": "fill", "target": "password", "value": "will" },
-    { "action": "click", "target": "loginButton" },
-    { "action": "click", "target": "salesMenu" },
-    { "action": "click", "target": "leadsLink" },
-    { "action": "click", "target": "createLeadButton" },
-    { "action": "fill", "target": "firstName", "value": "James" },
-    { "action": "fill", "target": "lastName", "value": "Bond" },
-    { "action": "click", "target": "saveButton" }
-  ],
+ 
   "testData": {
     "username": "will",
     "password": "will",

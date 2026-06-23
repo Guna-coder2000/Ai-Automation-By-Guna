@@ -110,7 +110,14 @@ export class HealingAgent {
        return cleanCssMatch[0];
     }
 
-    return '*'; // Ultimate fallback (forces failure again to prevent false positive)
+    // Ultimate fallback: Extract base HTML tag (e.g. //button[...] -> button) instead of wildly guessing '*'
+    const tagMatch = failedSelector.match(/(?:^|\/\/)([a-z0-9]+)\[/i);
+    if (tagMatch && tagMatch[1]) {
+       return tagMatch[1].toLowerCase();
+    }
+    
+    // If it's completely unparseable, throw to prevent false positives and test hangs
+    throw new FrameworkError(`Could not extract any meaningful heuristic from failed selector: ${failedSelector}`, undefined, 'HEAL_SELECTOR_NOT_FOUND');
   }
 
   private async findFileContainingSelector(preferredFile: string, failedSelector: string): Promise<string> {

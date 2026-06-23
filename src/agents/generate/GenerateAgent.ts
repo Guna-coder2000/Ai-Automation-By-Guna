@@ -30,7 +30,7 @@ export class GenerateAgent {
 
   async run(planPath: string): Promise<string> {
     try {
-      const plan = this.normalizePlan(JSON.parse(await readFile(planPath, 'utf-8')));
+      const plan = await this.normalizePlan(JSON.parse(await readFile(planPath, 'utf-8')));
       if (plan.locators && typeof plan.locators === 'object' && Object.keys(plan.locators).length > 0) {
         plan.locators = await this.applyHealingHistoryToLocators(plan.locators);
       }
@@ -56,7 +56,7 @@ export class GenerateAgent {
 
       supportFiles = this.pruneSupportFilesToImportGraph(supportFiles, promptSpec);
 
-      const fallbackBundle = this.generateStructuredFallback(plan);
+      const fallbackBundle = await this.generateStructuredFallback(plan);
 
       // Force robust heuristic locators to override LLM hallucinations, unless explicitly provided
       if (!plan.locators || Object.keys(plan.locators).length === 0 || (Object.keys(plan.locators).length === 1 && plan.locators.applicationUrl)) {
@@ -121,10 +121,10 @@ export class GenerateAgent {
     }
   }
 
-  private normalizePlan(plan: any): any {
+  private async normalizePlan(plan: any): Promise<any> {
     const normalized = {
       ...plan,
-      locators: this.prepareFallbackLocators(plan),
+      locators: await this.prepareFallbackLocators(plan),
     };
 
     if (!normalized.applicationUrl) {
@@ -137,12 +137,12 @@ export class GenerateAgent {
     return normalized;
   }
 
-  private generateStructuredFallback(plan: any): { testSpec: string; supportFiles: Record<string, string> } {
+  private async generateStructuredFallback(plan: any): Promise<{ testSpec: string; supportFiles: Record<string, string> }> {
     const className = this.deriveClassName(plan.scenario || 'GeneratedTest');
     const locatorExport = `${className}Locators`;
     const locatorKeyType = this.locatorKeyTypeName(locatorExport);
     const pageClass = `${className}Page`;
-    const locators = this.prepareFallbackLocators(plan);
+    const locators = await this.prepareFallbackLocators(plan);
     const locatorFileName = `${className}Locators.ts`;
     const pageFileName = `${className}Page.ts`;
 
@@ -636,31 +636,29 @@ ${body || `  await expect(page.locator('body')).toBeVisible({ timeout: 10000 });
     }));
   }
 
-  private prepareFallbackLocators(plan: any): Record<string, string> {
+  private async prepareFallbackLocators(plan: any): Promise<Record<string, string>> {
     const locators = this.normalizeLocatorAliases(plan?.locators);
     const applicationUrl = plan?.applicationUrl ?? this.inferApplicationUrlFromSteps(plan?.steps) ?? process.env.BASE_URL;
     if (applicationUrl) locators.applicationUrl = String(applicationUrl);
 
+    // GenerateAgent STRICTLY consumes locators from the plan JSON.
+    // It is explicitly unauthorized to discover real DOM or generate new locators.
     for (const step of Array.isArray(plan?.steps) ? plan.steps : []) {
       const action = String(step?.action ?? '').toLowerCase();
       if (action === 'navigate' || action === 'asserturl') continue;
       if (this.isDataOnlyItemsStep(step, plan?.testData)) continue;
 
       const target = String(step?.target ?? '').trim();
+      // If a target exists in the steps but NOT in the plan locators,
+      // map it to itself as a placeholder or exact string so the spec can compile.
       if (target && !this.resolveLocatorKey(target, locators)) {
-        const selector = this.selectorForTarget(target, action);
-        if (selector) {
-          locators[this.safeLocatorKey(target, action)] = selector;
-        }
+         locators[this.safeLocatorKey(target, action)] = target;
       }
 
       if (['draganddrop', 'dragdrop', 'drag'].includes(action)) {
         const secondaryTarget = this.secondaryTargetName(step).trim();
         if (secondaryTarget && !this.resolveLocatorKey(secondaryTarget, locators)) {
-          const secondarySelector = this.selectorForTarget(secondaryTarget, action);
-          if (secondarySelector) {
-            locators[this.safeLocatorKey(secondaryTarget, action)] = secondarySelector;
-          }
+           locators[this.safeLocatorKey(secondaryTarget, action)] = secondaryTarget;
         }
       }
     }
@@ -724,22 +722,6 @@ ${body || `  await expect(page.locator('body')).toBeVisible({ timeout: 10000 });
 
     return Object.entries(locators)
       .find(([key, selector]) => key !== 'applicationUrl' && selector === target)?.[0];
-  }
-
-  private selectorForTarget(target: string, action: string): string | undefined {
-    const trimmed = target.trim();
-
-    if (this.looksLikeSelector(trimmed)) return trimmed;
-
-    if (['fill', 'select', 'selectbytext', 'choose', 'fillandchoose', 'autocomplete', 'press', 'uploadfile', 'upload'].includes(action)) {
-      return `//*[@name="${trimmed}" or @id="${trimmed}" or @placeholder="${trimmed}" or @data-testid="${trimmed}" or @aria-label="${trimmed}"]`;
-    }
-    if (['click', 'logout'].includes(action)) {
-      const clean = trimmed.replace(/button|btn|link$/i, '').trim() || trimmed;
-      return `//button[contains(normalize-space(.), "${clean}")] | //a[contains(normalize-space(.), "${clean}")] | //*[contains(@class, "btn") and contains(normalize-space(.), "${clean}")] | //*[@id="${trimmed}" or @data-testid="${trimmed}"]`;
-    }
-    if (['verifytext', 'asserttext'].includes(action)) return `//*[contains(normalize-space(.), "${trimmed}")]`;
-    return `//*[@name="${trimmed}" or @id="${trimmed}" or @data-testid="${trimmed}"]`;
   }
 
   private looksLikeSelector(value: string): boolean {

@@ -1,17 +1,7 @@
 {
   "scenario": "E-Commerce Application Product Management",
   "applicationUrl": "https://demowebshop.tricentis.com/",
-  "steps": [
-    { "action": "navigate", "target": "https://demowebshop.tricentis.com/" },
-    { "action": "fill", "target": "searchTerms", "value": "laptop" },
-    { "action": "click", "target": "searchButton" },
-    { "action": "assertVisible", "target": "productItem" },
-    { "action": "click", "target": "addToCartButton" },
-    { "action": "assertVisible", "target": "barNotification" },
-    { "action": "click", "target": "shoppingCartLink" },
-    { "action": "click", "target": "removefromcart" },
-    { "action": "click", "target": "updatecart" }
-  ],
+  
   "testData": {
     "searchTerms": "laptop"
   }

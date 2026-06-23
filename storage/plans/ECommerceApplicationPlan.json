@@ -1,0 +1,24 @@
+{
+  "scenario": "E-Commerce Application Product Management",
+  "steps": [
+    {
+      "step": 1,
+      "action": "navigate",
+      "target": "https://demowebshop.tricentis.com/"
+    },
+    {
+      "step": 2,
+      "action": "fill",
+      "target": "searchTermsInput",
+      "value": "laptop"
+    }
+  ],
+  "env": "default",
+  "applicationUrl": "https://demowebshop.tricentis.com/",
+  "locators": {
+    "searchTermsInput": "//input[@id=\"small-searchterms\"]"
+  },
+  "testData": {
+    "searchTerms": "laptop"
+  }
+}
